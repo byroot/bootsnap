@@ -1,5 +1,8 @@
 # Unreleased
 
+* Fix `CompileCache::Native.fetch` and `.precompile` reading a non-`String` path argument (e.g. a `Pathname`)
+  with `RSTRING_PTR`. Regression from 1.24.0.
+
 # 1.24.6
 
 * Fix detection of Ruby bug #22023 on some patch versions of Ruby 3.4, and properly apply the workaround.
