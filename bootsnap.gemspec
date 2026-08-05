@@ -38,5 +38,5 @@ Gem::Specification.new do |spec|
     spec.extensions  = ["ext/bootsnap/extconf.rb"]
   end
 
-  spec.add_dependency("msgpack", "~> 1.2")
+  spec.add_dependency("msgpack", "~> 1.5")
 end

@@ -47,14 +47,6 @@ module Bootsnap
           SUPPORTED_INTERNAL_ENCODINGS.include?(Encoding.default_internal)
         end
 
-        module EncodingAwareSymbols
-          extend self
-
-          def unpack(payload)
-            (+payload).force_encoding(Encoding::UTF_8).to_sym
-          end
-        end
-
         def init!
           require "yaml"
           require "msgpack"
@@ -86,27 +78,26 @@ module Bootsnap
             0x00,
             Symbol,
             packer: :to_msgpack_ext,
-            unpacker: EncodingAwareSymbols.method(:unpack).to_proc,
+            unpacker: :from_msgpack_ext,
+            optimized_symbol_parsing: true,
           )
 
-          if defined? MessagePack::Timestamp
-            factory.register_type(
-              MessagePack::Timestamp::TYPE, # or just -1
-              Time,
-              packer: MessagePack::Time::Packer,
-              unpacker: MessagePack::Time::Unpacker,
-            )
+          factory.register_type(
+            MessagePack::Timestamp::TYPE, # or just -1
+            Time,
+            packer: MessagePack::Time::Packer,
+            unpacker: MessagePack::Time::Unpacker,
+          )
 
-            marshal_fallback = {
-              packer: ->(value) { Marshal.dump(value) },
-              unpacker: ->(payload) { Marshal.load(payload) },
-            }
-            {
-              Date => 0x01,
-              Regexp => 0x02,
-            }.each do |type, code|
-              factory.register_type(code, type, marshal_fallback)
-            end
+          marshal_fallback = {
+            packer: ->(value) { Marshal.dump(value) },
+            unpacker: ->(payload) { Marshal.load(payload) },
+          }
+          {
+            Date => 0x01,
+            Regexp => 0x02,
+          }.each do |type, code|
+            factory.register_type(code, type, marshal_fallback)
           end
 
           self.msgpack_factory = factory
@@ -116,7 +107,7 @@ module Bootsnap
           if params.include?([:key, :symbolize_names])
             supported_options << :symbolize_names
           end
-          if params.include?([:key, :freeze]) && factory.load(factory.dump("yaml"), freeze: true).frozen?
+          if params.include?([:key, :freeze])
             supported_options << :freeze
           end
           supported_options.freeze
