@@ -79,7 +79,7 @@ struct bs_cache_key {
 STATIC_ASSERT(sizeof(struct bs_cache_key) == KEY_SIZE);
 
 /* Effectively a schema version. Bumping invalidates all previous caches */
-static const uint32_t bootsnap_cache_version = 7;
+static const uint32_t bootsnap_cache_version = 8;
 
 /* Invalidates cache when switching ruby version, platform or ABI */
 static uint64_t base_ruby_version_digest = 0;

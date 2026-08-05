@@ -89,16 +89,58 @@ module Bootsnap
             unpacker: MessagePack::Time::Unpacker,
           )
 
-          marshal_fallback = {
+          factory.register_type(
+            0x01,
+            Date,
+            packer: lambda { |date, packer|
+              packer.write(date.year)
+              packer.write(date.month)
+              packer.write(date.day)
+            },
+            unpacker: lambda { |unpacker|
+              ::Date.new(unpacker.read, unpacker.read, unpacker.read)
+            },
+            recursive: true,
+          )
+
+          factory.register_type(
+            0x02,
+            Regexp,
             packer: ->(value) { Marshal.dump(value) },
             unpacker: ->(payload) { Marshal.load(payload) },
-          }
-          {
-            Date => 0x01,
-            Regexp => 0x02,
-          }.each do |type, code|
-            factory.register_type(code, type, marshal_fallback)
-          end
+          )
+
+          factory.register_type(
+            0x03,
+            DateTime,
+            packer: lambda { |dt, packer|
+              packer.write(dt.year)
+              packer.write(dt.month)
+              packer.write(dt.day)
+              packer.write(dt.hour)
+              packer.write(dt.minute)
+
+              sec = dt.sec + dt.sec_fraction
+              packer.write(sec.numerator)
+              packer.write(sec.denominator)
+
+              offset = dt.offset
+              packer.write(offset.numerator)
+              packer.write(offset.denominator)
+            },
+            unpacker: lambda { |unpacker|
+              ::DateTime.new(
+                unpacker.read, # year
+                unpacker.read, # month
+                unpacker.read, # day
+                unpacker.read, # hour
+                unpacker.read, # minute
+                Rational(unpacker.read, unpacker.read), # sec fraction
+                Rational(unpacker.read, unpacker.read), # offset fraction
+              )
+            },
+            recursive: true,
+          )
 
           self.msgpack_factory = factory
 
