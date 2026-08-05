@@ -257,6 +257,24 @@ class CompileCacheYAMLTest < Minitest::Test
       Help.set_file("a.yml", ::YAML.dump(foo: /bar/), 100)
       assert_equal({foo: /bar/}, FakeYaml.unsafe_load_file("a.yml"))
     end
+
+    def test_unsafe_load_file_supports_date
+      today = Date.today
+      Help.set_file("a.yml", ::YAML.dump(today), 100)
+      2.times { assert_equal(today, FakeYaml.unsafe_load_file("a.yml")) }
+    end
+
+    def test_unsafe_load_file_supports_datetime
+      dt = DateTime.now
+      Help.set_file("a.yml", ::YAML.dump(dt), 100)
+      2.times { assert_equal(dt, FakeYaml.unsafe_load_file("a.yml")) }
+    end
+
+    def test_unsafe_load_file_supports_bigint
+      bigint = 2**150
+      Help.set_file("a.yml", ::YAML.dump(bigint), 100)
+      2.times { assert_equal(bigint, FakeYaml.unsafe_load_file("a.yml")) }
+    end
   end
 
   def test_no_read_permission

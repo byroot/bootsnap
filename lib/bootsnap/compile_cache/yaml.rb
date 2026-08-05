@@ -47,14 +47,6 @@ module Bootsnap
           SUPPORTED_INTERNAL_ENCODINGS.include?(Encoding.default_internal)
         end
 
-        module EncodingAwareSymbols
-          extend self
-
-          def unpack(payload)
-            (+payload).force_encoding(Encoding::UTF_8).to_sym
-          end
-        end
-
         def init!
           require "yaml"
           require "msgpack"
@@ -86,28 +78,78 @@ module Bootsnap
             0x00,
             Symbol,
             packer: :to_msgpack_ext,
-            unpacker: EncodingAwareSymbols.method(:unpack).to_proc,
+            unpacker: :from_msgpack_ext,
+            optimized_symbol_parsing: true,
           )
 
-          if defined? MessagePack::Timestamp
-            factory.register_type(
-              MessagePack::Timestamp::TYPE, # or just -1
-              Time,
-              packer: MessagePack::Time::Packer,
-              unpacker: MessagePack::Time::Unpacker,
-            )
+          factory.register_type(
+            MessagePack::Timestamp::TYPE, # or just -1
+            Time,
+            packer: MessagePack::Time::Packer,
+            unpacker: MessagePack::Time::Unpacker,
+          )
 
-            marshal_fallback = {
-              packer: ->(value) { Marshal.dump(value) },
-              unpacker: ->(payload) { Marshal.load(payload) },
-            }
-            {
-              Date => 0x01,
-              Regexp => 0x02,
-            }.each do |type, code|
-              factory.register_type(code, type, marshal_fallback)
-            end
-          end
+          factory.register_type(
+            0x01,
+            Date,
+            packer: lambda { |date, packer|
+              packer.write(date.year)
+              packer.write(date.month)
+              packer.write(date.day)
+            },
+            unpacker: lambda { |unpacker|
+              ::Date.new(unpacker.read, unpacker.read, unpacker.read)
+            },
+            recursive: true,
+          )
+
+          factory.register_type(
+            0x02,
+            Regexp,
+            packer: ->(value) { Marshal.dump(value) },
+            unpacker: ->(payload) { Marshal.load(payload) },
+          )
+
+          factory.register_type(
+            0x03,
+            DateTime,
+            packer: lambda { |dt, packer|
+              packer.write(dt.year)
+              packer.write(dt.month)
+              packer.write(dt.day)
+              packer.write(dt.hour)
+              packer.write(dt.minute)
+
+              sec = dt.sec + dt.sec_fraction
+              packer.write(sec.numerator)
+              packer.write(sec.denominator)
+
+              offset = dt.offset
+              packer.write(offset.numerator)
+              packer.write(offset.denominator)
+            },
+            unpacker: lambda { |unpacker|
+              ::DateTime.new(
+                unpacker.read, # year
+                unpacker.read, # month
+                unpacker.read, # day
+                unpacker.read, # hour
+                unpacker.read, # minute
+                Rational(unpacker.read, unpacker.read), # sec fraction
+                Rational(unpacker.read, unpacker.read), # offset fraction
+              )
+            },
+            recursive: true,
+          )
+
+          require "msgpack/bigint"
+          factory.register_type(
+            0x04,
+            Integer,
+            packer: MessagePack::Bigint.method(:to_msgpack_ext),
+            unpacker: MessagePack::Bigint.method(:from_msgpack_ext),
+            oversized_integer_extension: true,
+          )
 
           self.msgpack_factory = factory
 
@@ -116,7 +158,7 @@ module Bootsnap
           if params.include?([:key, :symbolize_names])
             supported_options << :symbolize_names
           end
-          if params.include?([:key, :freeze]) && factory.load(factory.dump("yaml"), freeze: true).frozen?
+          if params.include?([:key, :freeze])
             supported_options << :freeze
           end
           supported_options.freeze
