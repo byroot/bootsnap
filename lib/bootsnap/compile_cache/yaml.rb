@@ -142,6 +142,15 @@ module Bootsnap
             recursive: true,
           )
 
+          require "msgpack/bigint"
+          factory.register_type(
+            0x04,
+            Integer,
+            packer: MessagePack::Bigint.method(:to_msgpack_ext),
+            unpacker: MessagePack::Bigint.method(:from_msgpack_ext),
+            oversized_integer_extension: true,
+          )
+
           self.msgpack_factory = factory
 
           self.supported_options = []
