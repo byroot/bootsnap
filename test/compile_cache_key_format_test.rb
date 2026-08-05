@@ -4,6 +4,7 @@ require "test_helper"
 require "tempfile"
 require "tmpdir"
 require "fileutils"
+require "pathname"
 
 class CompileCacheKeyFormatTest < Minitest::Test
   FILE = File.expand_path(__FILE__)
@@ -88,6 +89,31 @@ class CompileCacheKeyFormatTest < Minitest::Test
 
     actual = Bootsnap::CompileCache::Native.fetch(cache_dir, nil, target, TestHandler, nil)
     assert_equal("NEATO #{target.upcase}", actual)
+  end
+
+  def test_fetch_pathname
+    target = Help.set_file("a.rb", "foo = 1")
+
+    cache_dir = File.join(@tmp_dir, "compile_cache")
+    actual = Bootsnap::CompileCache::Native.fetch(cache_dir, nil, Pathname.new(target), TestHandler, nil)
+    assert_equal("NEATO #{target.upcase}", actual)
+
+    # Same cache entry as the String form: the path is converted before it is
+    # hashed and before it is read back with RSTRING_PTR.
+    Bootsnap::CompileCache::Native.fetch(cache_dir, nil, target, TestHandler, nil)
+    entries = Dir["#{cache_dir}/**/*"].select { |f| File.file?(f) }
+    assert_equal(1, entries.size)
+  end
+
+  def test_precompile_pathname
+    target = Help.set_file("a.rb", "foo = 1")
+
+    cache_dir = File.join(@tmp_dir, "compile_cache")
+    assert(Bootsnap::CompileCache::Native.precompile(cache_dir, nil, Pathname.new(target), TestHandler))
+
+    entries = Dir["#{cache_dir}/**/*"].select { |f| File.file?(f) }
+    assert_equal(1, entries.size)
+    assert_equal("neato #{target}", File.read(entries.first).b[CACHE_KEY_SIZE..])
   end
 
   def test_revalidation

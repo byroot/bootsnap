@@ -395,12 +395,14 @@ get_ruby_version_digest(void)
  * be stored.
  *
  * The path will look something like: <cachedir>/12/34567890abcdef
+ *
+ * `path_v` must already have been through FilePathValue(): the callers read it
+ * with RSTRING_PTR() too, so the conversion has to happen in the frame that
+ * owns the variable.
  */
 static void
 bs_cache_path(VALUE cachedir_v, VALUE namespace_v, VALUE path_v, char (* cache_path)[MAX_CACHEPATH_SIZE])
 {
-  FilePathValue(path_v);
-
   Check_Type(cachedir_v, T_STRING);
   Check_Type(path_v, T_STRING);
 
@@ -492,6 +494,8 @@ static void bs_cache_key_digest(struct bs_cache_key *key,
 static VALUE
 bs_rb_fetch(VALUE self, VALUE cachedir_v, VALUE namespace_v, VALUE path_v, VALUE handler, VALUE args)
 {
+  FilePathValue(path_v);
+
   char cache_path[MAX_CACHEPATH_SIZE];
 
   /* generate cache path to cache_path */
@@ -508,6 +512,8 @@ bs_rb_fetch(VALUE self, VALUE cachedir_v, VALUE namespace_v, VALUE path_v, VALUE
 static VALUE
 bs_rb_precompile(VALUE self, VALUE cachedir_v, VALUE namespace_v, VALUE path_v, VALUE handler)
 {
+  FilePathValue(path_v);
+
   char cache_path[MAX_CACHEPATH_SIZE];
   /* generate cache path to cache_path */
   bs_cache_path(cachedir_v, namespace_v, path_v, &cache_path);
