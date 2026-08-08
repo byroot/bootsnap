@@ -318,7 +318,13 @@ static inline void
 bs_instrumentation(VALUE event, VALUE path)
 {
     if (RB_UNLIKELY(instrumentation_enabled)) {
+       // If the funcall raises and rescues an error we will lose the errinfo
+       // that exists now so we save it before and restore it after.
+       VALUE saved_errinfo = rb_errinfo();
        rb_funcall(rb_mBootsnap, instrumentation_method, 2, event, path);
+       // If the ruby code in instrumentation_method raised we won't reach this point.
+       // If it didn't raise it _might_ have rescued so we should restore errinfo.
+       rb_set_errinfo(saved_errinfo);
     }
 }
 
