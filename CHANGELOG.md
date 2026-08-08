@@ -1,5 +1,11 @@
 # Unreleased
 
+* Don't invalidate the compile cache when YJIT is toggled. YJIT is a runtime JIT and doesn't change the
+  serialized instruction sequences that are cached, but enabling it (via `--yjit`, `RUBYOPT`, or
+  `RubyVM::YJIT.enable`) adds a ` +YJIT` marker to `RUBY_DESCRIPTION` (` +YJIT <token>` on `YJIT_SUPPORT`
+  builds), which is part of the cache key. This previously discarded the entire compile cache whenever YJIT
+  was enabled at runtime but not at precompile time (or vice versa). The marker is now stripped before hashing.
+
 * Fix `CompileCache::Native.fetch` and `.precompile` reading a non-`String` path argument (e.g. a `Pathname`)
   with `RSTRING_PTR`. Regression from 1.24.0.
 

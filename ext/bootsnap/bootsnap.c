@@ -384,7 +384,7 @@ bs_compile_option_crc32_set(VALUE self, VALUE crc32_v)
 static uint64_t
 get_ruby_version_digest(void)
 {
-  uint64_t hash = fnv1a_64_str(rb_const_get(rb_cObject, rb_intern("RUBY_DESCRIPTION")));
+  uint64_t hash = fnv1a_64_str(rb_const_get(rb_mBootsnap, rb_intern("RUBY_CACHE_KEY")));
   hash = fnv1a_64_iter(hash, (unsigned char *)&bootsnap_cache_version, sizeof(bootsnap_cache_version));
   return hash;
 }

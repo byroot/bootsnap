@@ -53,7 +53,7 @@ class CompileCacheKeyFormatTest < Minitest::Test
     Bootsnap::CompileCache::ISeq.compile_option_updated
 
     key = cache_key_for_file(FILE)
-    hash = Help.fnv1a_64(RUBY_DESCRIPTION)
+    hash = Help.fnv1a_64(Bootsnap::RUBY_CACHE_KEY)
     hash = Help.fnv1a_64_iter(hash, [8].pack("L"))
     hash = Help.fnv1a_64_iter(hash, [Zlib.crc32(RubyVM::InstructionSequence.compile_option.inspect)].pack("L"))
     assert_equal([hash].pack("Q"), key[R[:ruby_version_digest]])

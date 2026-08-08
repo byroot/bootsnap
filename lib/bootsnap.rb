@@ -6,6 +6,9 @@ require_relative "bootsnap/bundler"
 module Bootsnap
   InvalidConfiguration = Class.new(StandardError)
 
+  # JITs shouldn't change the cache key as they have no impact on iseq generation
+  RUBY_CACHE_KEY = RUBY_DESCRIPTION.gsub(/\s\+\wJIT/, "").freeze
+
   class << self
     attr_reader :cache_dir, :logger
 
