@@ -1,5 +1,9 @@
 # Unreleased
 
+# 1.25.0
+
+* Improve YAML parsing cache to more efficiently handle `Time`, `Date` and `DateTime`.
+
 * Don't invalidate the compile cache when YJIT is toggled. YJIT is a runtime JIT and doesn't change the
   serialized instruction sequences that are cached, but enabling it (via `--yjit`, `RUBYOPT`, or
   `RubyVM::YJIT.enable`) adds a ` +YJIT` marker to `RUBY_DESCRIPTION` (` +YJIT <token>` on `YJIT_SUPPORT`
