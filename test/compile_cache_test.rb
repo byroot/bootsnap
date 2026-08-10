@@ -267,4 +267,46 @@ class CompileCacheTest < Minitest::Test
 
     assert_equal [[:stale, "a.rb"]], calls
   end
+
+  def test_instrumentation_does_not_swallow_handler_exception
+    file_path = Help.set_file("a.rb", "a = a = 3", 100)
+    load(file_path)
+
+    Bootsnap.instrumentation = lambda { |_event, _path|
+      begin
+        raise "instrumentation internal error"
+      rescue StandardError
+      end
+    }
+
+    klass = Class.new(StandardError)
+    Bootsnap::CompileCache::ISeq::DEFAULT.expects(:storage_to_output).raises(klass, "oops")
+
+    assert_raises(klass) { load(file_path) }
+  end
+
+  def test_instrumentation_callback_raise_overrides_handler_exception
+    file_path = Help.set_file("a.rb", "a = a = 3", 100)
+    load(file_path)
+
+    instrumentation_error = Class.new(StandardError)
+    Bootsnap.instrumentation = lambda { |_event, _path|
+      raise instrumentation_error, "instrumentation failure"
+    }
+
+    handler_error = Class.new(StandardError)
+    Bootsnap::CompileCache::ISeq::DEFAULT.expects(:storage_to_output).raises(handler_error, "handler failure")
+
+    # When the instrumentation callback raises a new exception (not rescued),
+    # the raise escapes via rb_funcall's longjmp — bypassing both
+    # rb_set_errinfo and rb_jump_tag. The callback's exception propagates
+    # directly to the caller. rb_set_errinfo is never reached, so the fix
+    # cannot overwrite the callback's exception with the saved handler one.
+    # The last exception raised wins, but the original handler exception is
+    # preserved as .cause (Ruby chains ec->errinfo as cause automatically),
+    # so neither is lost.
+    raised = assert_raises(instrumentation_error) { load(file_path) }
+    assert_kind_of(handler_error, raised.cause)
+    assert_equal("handler failure", raised.cause.message)
+  end
 end
