@@ -172,11 +172,11 @@ module Bootsnap
 
         if RUBY_VERSION < "3.1."
           def self.coverage_on?
-            defined?(Coverage) && Coverage.running?
+            defined?(Coverage.running?) && Coverage.running?
           end
         else
           def self.coverage_on?
-            defined?(Coverage) && Coverage.state != :idle
+            defined?(Coverage.state) && Coverage.state != :idle
           end
         end
 
