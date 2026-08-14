@@ -305,6 +305,7 @@ Init_bootsnap(void)
 
   current_umask = umask(0777);
   umask(current_umask);
+  fprintf(stderr, "current_umask = %u\n", current_umask);
 }
 
 static VALUE
@@ -773,7 +774,7 @@ atomic_write_cache_file(char * path, struct bs_cache_key * key, VALUE data, cons
     return -1;
   }
 
-  if (bs_fchmod(fd, tmp_path, 0644) < 0) {
+  if (bs_fchmod(fd, tmp_path, 0644 & ~current_umask) < 0) {
     *errno_provenance = "bs_fetch:atomic_write_cache_file:chmod";
     return -1;
   }
@@ -808,10 +809,6 @@ atomic_write_cache_file(char * path, struct bs_cache_key * key, VALUE data, cons
   if (ret < 0) {
     *errno_provenance = "bs_fetch:atomic_write_cache_file:rename";
     return -1;
-  }
-  ret = chmod(path, 0664 & ~current_umask);
-  if (ret < 0) {
-    *errno_provenance = "bs_fetch:atomic_write_cache_file:chmod";
   }
   return ret;
 }
