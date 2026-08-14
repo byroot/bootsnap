@@ -463,11 +463,34 @@ static int cache_key_equal_slow_path(struct bs_cache_key *current_key,
   return current_key->digest == cached_key->digest;
 }
 
+static ssize_t
+resumable_write(int fd, const void *buf, size_t count)
+{
+  size_t total_written = 0;
+  const char *ptr = buf;
+
+  while (count > 0) {
+    ssize_t res = write(fd, ptr, count);
+
+    if (res < 0) {
+      if (errno == EINTR) {
+        continue; // Interrupted by signal, try again
+      }
+      return -1; // Real error
+    }
+
+    ptr += res;
+    count -= res;
+    total_written += res;
+  }
+  return total_written;
+}
+
 static int update_cache_key(struct bs_cache_key *current_key, struct bs_cache_key *old_key, int cache_fd, const char ** errno_provenance)
 {
   old_key->mtime = current_key->mtime;
   lseek(cache_fd, 0, SEEK_SET);
-  ssize_t nwrite = write(cache_fd, old_key, KEY_SIZE);
+  ssize_t nwrite = resumable_write(cache_fd, old_key, KEY_SIZE);
   if (nwrite < 0) {
       *errno_provenance = "update_cache_key:write";
       return -1;
@@ -786,7 +809,7 @@ atomic_write_cache_file(char * path, struct bs_cache_key * key, VALUE data, cons
   }
 
   key->data_size = (uint32_t)data_size;
-  nwrite = write(fd, key, KEY_SIZE);
+  nwrite = resumable_write(fd, key, KEY_SIZE);
   if (nwrite < 0) {
     close(fd);
     *errno_provenance = "bs_fetch:atomic_write_cache_file:write";
@@ -799,7 +822,7 @@ atomic_write_cache_file(char * path, struct bs_cache_key * key, VALUE data, cons
     return -1;
   }
 
-  nwrite = write(fd, RSTRING_PTR(data), RSTRING_LEN(data));
+  nwrite = resumable_write(fd, RSTRING_PTR(data), RSTRING_LEN(data));
   if (nwrite < 0) return -1;
   if (nwrite != RSTRING_LEN(data)) {
     close(fd);
