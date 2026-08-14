@@ -731,6 +731,17 @@ mkpath(char * file_path, mode_t mode)
   return 0;
 }
 
+static int
+bs_fchmod(int fd, const char *path, mode_t mode)
+{
+#ifdef _WIN32
+  setmode(fd, O_BINARY);
+  return chmod(path, mode);
+#else
+  return fchmod(fd, mode);
+#endif
+}
+
 /*
  * Write a cache header/key and a compiled artifact to a given cache path by
  * writing to a tmpfile and then renaming the tmpfile over top of the final
@@ -762,14 +773,10 @@ atomic_write_cache_file(char * path, struct bs_cache_key * key, VALUE data, cons
     return -1;
   }
 
-  if (chmod(tmp_path, 0644) < 0) {
+  if (bs_fchmod(fd, tmp_path, 0644) < 0) {
     *errno_provenance = "bs_fetch:atomic_write_cache_file:chmod";
     return -1;
   }
-
-  #ifdef _WIN32
-  setmode(fd, O_BINARY);
-  #endif
 
   uint64_t data_size = RSTRING_LEN(data);
   if (data_size > (uint32_t)-1) {
