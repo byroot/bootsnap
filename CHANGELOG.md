@@ -1,5 +1,7 @@
 # Unreleased
 
+* Handle top level `Coverage` constant being defined, but without it being the true stdlib `coverage` module.
+
 # 1.25.0
 
 * Improve YAML parsing cache to more efficiently handle `Time`, `Date` and `DateTime`.
